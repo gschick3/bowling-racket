@@ -46,16 +46,16 @@
   (if (empty? game-list)
       scores
       (if (= (length (first game-list)) 1) ; if the top line is the team name, continue running with this as the current team name
-          (score-players (rest game-list) scores (first (first game-list)))
+          (score-players (rest game-list) scores (caar game-list))
           (let*
-              ([fname (first (first game-list))]
-               [lname (second (first game-list))]
+              ([fname (caar game-list)]
+               [lname (cadar game-list)]
                [game-matches-player? (lambda (line) (and (equal? (first line) fname) (equal? (second line) lname)))]) ; test if name on game matches given name
             (score-players (filter-not game-matches-player? game-list)
                            (append scores (list (list fname
                                                       lname
                                                       (foldl + 0 (map (lambda (lst) ; calculate player score
-                                                                        (score-game (rest (rest lst))))
+                                                                        (score-game (cddr lst)))
                                                                       (filter game-matches-player? game-list)))
                                                       team-name)))
                            team-name)))))
@@ -67,7 +67,7 @@
       (let ; bring this out so it isn't recalculated every time the filter lambda is called
           ([top-player-score (foldl (lambda (next-player-list top-score) ; find largest score among players
                                       (if (> top-score (third next-player-list)) top-score (third next-player-list)))
-                                    (third (first scores))
+                                    (caddar scores)
                                     scores)])
         (filter (lambda (player-list) ; then, filter all players with that score
                   (= (third player-list) top-player-score))
@@ -77,14 +77,10 @@
 (define (score-teams scores [team-scores '()])
   (if (empty? scores)
       team-scores
-      (let
-          ([team-name (fourth (first scores))])
-        (score-teams (filter-not (lambda (player-list) (equal? (fourth player-list) team-name)) scores) ; remove team being currently scored
-                     (append team-scores
-                             (list (list team-name
-                                         (foldl (lambda (player-list total) (+ total (third player-list))) ; add all scores from matching team
-                                                0
-                                                (filter (lambda (player-list) (equal? (fourth player-list) team-name)) scores)))))))))
+      (map (lambda (lst) (foldl (lambda (player-score current-stats)
+                                  (list (first current-stats) (+ (second current-stats) (third player-score))))
+                                (list (fourth (first lst)) 0) lst))
+           (group-by fourth scores))))
 
 ; Put all desired output into list
 (define (get-stats open-file)
@@ -97,7 +93,7 @@
           (list "Winner" (first (foldl (lambda (team-info winning-team) ; name of winner
                                          (if (> (second team-info) (second winning-team)) team-info winning-team))
                                        (first team-scores) team-scores))))))
- 
+
 (get-stats (process-file "scores.txt"))
 
 (module+ test
