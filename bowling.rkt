@@ -40,7 +40,7 @@
         (if (or (and (= (length game) 2) (spare? (first game)))
                 (and (= (length game) 3) (strike? (first game))))
             (+ total (calculate-next-roll game)) ; if spare is second-to-last or strike is third-to-last, only calculate spare/strike score and ignore the extra frames
-            (score-game (rest game) (+ total (calculate-next-roll game)))))) ; otherwise, continue to next score (I believe this is tail call optimization)
+            (iter (rest game) (+ total (calculate-next-roll game)))))) ; otherwise, continue to next score (I believe this is tail call optimization)
   (iter game 0))
 
 ; Calculate all individual player scores
@@ -49,12 +49,12 @@
     (if (empty? game-list)
         scores
         (if (= (length (first game-list)) 1) ; if the top line is the team name, continue running with this as the current team name
-            (score-players (rest game-list) scores (caar game-list)) ; I think it's tail call recursion as long as its simply calling itself
+            (iter (rest game-list) scores (caar game-list)) ; I think it's tail call recursion as long as its simply calling itself
             (let*
                 ([fname (caar game-list)]
                  [lname (cadar game-list)]
                  [game-matches-player? (λ (line) (and (equal? (first line) fname) (equal? (second line) lname)))]) ; test if name on game matches given name
-              (score-players (filter-not game-matches-player? game-list)
+              (iter (filter-not game-matches-player? game-list)
                              (append scores `((,fname ; ` for list with variables | , for variable insert
                                                ,lname
                                                ,(foldl + 0 (map (λ (lst) ; calculate player score
