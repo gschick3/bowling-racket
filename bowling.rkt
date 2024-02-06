@@ -3,11 +3,11 @@
 (define (process-file filename)
   (let
       ([lines (file->lines filename)])
-    (map (lambda (lst)
-           (map (lambda (val) ; map a map to each sublist
+    (map (λ (lst)
+           (map (λ (val) ; map a map to each sublist
                   (if (string->number val) (string->number val) val)) ; if the string can be converted to a number, do so
-            lst))
-          (map string-split lines)))) 
+                lst))
+         (map string-split lines)))) 
 
 (define (strike? val)
   (equal? val "X"))
@@ -33,51 +33,55 @@
         [else 0]))
 
 ; Score a single game
-(define (score-game game [total 0])
+(define (score-game game)
+  (define (iter game total)
     (if (empty? game)
         total
         (if (or (and (= (length game) 2) (spare? (first game)))
                 (and (= (length game) 3) (strike? (first game))))
             (+ total (calculate-next-roll game)) ; if spare is second-to-last or strike is third-to-last, only calculate spare/strike score and ignore the extra frames
-            (score-game (rest game) (+ total (calculate-next-roll game)))))) ; otherwise, continue to next score
+            (score-game (rest game) (+ total (calculate-next-roll game)))))) ; otherwise, continue to next score (I believe this is tail call optimization)
+  (iter game 0))
 
 ; Calculate all individual player scores
-(define (score-players game-list [scores '()] [team-name "NoTeam"])
-  (if (empty? game-list)
-      scores
-      (if (= (length (first game-list)) 1) ; if the top line is the team name, continue running with this as the current team name
-          (score-players (rest game-list) scores (caar game-list))
-          (let*
-              ([fname (caar game-list)]
-               [lname (cadar game-list)]
-               [game-matches-player? (lambda (line) (and (equal? (first line) fname) (equal? (second line) lname)))]) ; test if name on game matches given name
-            (score-players (filter-not game-matches-player? game-list)
-                           (append scores `((,fname ; ` for list with variables | , for variable insert
-                                             ,lname
-                                             ,(foldl + 0 (map (lambda (lst) ; calculate player score
-                                                                (score-game (cddr lst)))
-                                                              (filter game-matches-player? game-list)))
-                                             ,team-name)))
-                           team-name)))))
+(define (score-players game-list)
+  (define (iter game-list scores team-name)
+    (if (empty? game-list)
+        scores
+        (if (= (length (first game-list)) 1) ; if the top line is the team name, continue running with this as the current team name
+            (score-players (rest game-list) scores (caar game-list)) ; I think it's tail call recursion as long as its simply calling itself
+            (let*
+                ([fname (caar game-list)]
+                 [lname (cadar game-list)]
+                 [game-matches-player? (λ (line) (and (equal? (first line) fname) (equal? (second line) lname)))]) ; test if name on game matches given name
+              (score-players (filter-not game-matches-player? game-list)
+                             (append scores `((,fname ; ` for list with variables | , for variable insert
+                                               ,lname
+                                               ,(foldl + 0 (map (λ (lst) ; calculate player score
+                                                                  (score-game (cddr lst)))
+                                                                (filter game-matches-player? game-list)))
+                                               ,team-name)))
+                             team-name)))))
+  (iter game-list '() "NoTeam"))
 
 ; Get top-scoring player(s) and number of points where scores is the output from score-all
 (define (find-top-score-player scores)
   (if (empty? scores)
       '()
-      (let ; bring this out so it isn't recalculated every time the filter lambda is called
-          ([top-player-score (foldl (lambda (next-player-list top-score) ; find largest score among players
+      (let ; bring this out so it isn't recalculated every time the filter λ is called
+          ([top-player-score (foldl (λ (next-player-list top-score) ; find largest score among players
                                       (if (> top-score (third next-player-list)) top-score (third next-player-list)))
                                     (caddar scores)
                                     scores)])
-        (filter (lambda (player-list) ; then, filter all players with that score
+        (filter (λ (player-list) ; then, filter all players with that score
                   (= (third player-list) top-player-score))
                 scores))))
 
 ; Get total scores for each team
-(define (score-teams scores [team-scores '()])
+(define (score-teams scores)
   (if (empty? scores)
-      team-scores
-      (map (lambda (lst) (foldl (lambda (player-score current-stats)
+      '()
+      (map (λ (lst) (foldl (λ (player-score current-stats)
                                   (list (first current-stats) (+ (second current-stats) (third player-score))))
                                 (list (fourth (first lst)) 0) lst))
            (group-by fourth scores))))
@@ -90,7 +94,7 @@
     `(("Player Scores" ,player-scores)
       ("Top players" ,(find-top-score-player player-scores))
       ("Team scores" ,team-scores)
-      ("Winner" ,(first (foldl (lambda (team-info winning-team) ; name of winner
+      ("Winner" ,(first (foldl (λ (team-info winning-team) ; name of winner
                                  (if (> (second team-info) (second winning-team)) team-info winning-team))
                                (first team-scores) team-scores))))))
 
