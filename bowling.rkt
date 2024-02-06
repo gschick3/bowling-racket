@@ -52,12 +52,12 @@
                [lname (cadar game-list)]
                [game-matches-player? (lambda (line) (and (equal? (first line) fname) (equal? (second line) lname)))]) ; test if name on game matches given name
             (score-players (filter-not game-matches-player? game-list)
-                           (append scores (list (list fname
-                                                      lname
-                                                      (foldl + 0 (map (lambda (lst) ; calculate player score
-                                                                        (score-game (cddr lst)))
-                                                                      (filter game-matches-player? game-list)))
-                                                      team-name)))
+                           (append scores `((,fname ; ` for list with variables | , for variable insert
+                                             ,lname
+                                             ,(foldl + 0 (map (lambda (lst) ; calculate player score
+                                                                (score-game (cddr lst)))
+                                                              (filter game-matches-player? game-list)))
+                                             ,team-name)))
                            team-name)))))
 
 ; Get top-scoring player(s) and number of points where scores is the output from score-all
@@ -87,12 +87,12 @@
   (let*
       ([player-scores (score-players open-file)]
        [team-scores (score-teams player-scores)])
-    (list (list "Player Scores" player-scores)
-          (list "Top players" (find-top-score-player player-scores))
-          (list "Team scores" team-scores)
-          (list "Winner" (first (foldl (lambda (team-info winning-team) ; name of winner
-                                         (if (> (second team-info) (second winning-team)) team-info winning-team))
-                                       (first team-scores) team-scores))))))
+    `(("Player Scores" ,player-scores)
+      ("Top players" ,(find-top-score-player player-scores))
+      ("Team scores" ,team-scores)
+      ("Winner" ,(first (foldl (lambda (team-info winning-team) ; name of winner
+                                 (if (> (second team-info) (second winning-team)) team-info winning-team))
+                               (first team-scores) team-scores))))))
 
 (get-stats (process-file "scores.txt"))
 
