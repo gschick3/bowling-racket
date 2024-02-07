@@ -1,25 +1,25 @@
 #lang racket
 
 ; Take list of strings, turn all valid elements into numbers
-(define (parse-list lst)
+(define (list->int-list lst)
   (map (λ (val)
          (if (string->number val) (string->number val) val)) ; if the string can be converted to a number, do so
        lst))
 
 ; input file -> lines of text as list of lists
-(define (read-file filename)
+(define (file->int-lists filename)
   (let
       ([lines (file->lines filename)])
-    (map parse-list (map string-split lines))))
+    (map list->int-list (map string-split lines))))
 
 ; Prepare data for use (this is the format used by every other function)
-(define (process-file filename)
+(define (parse-file filename)
   (define (iter lst new-list team-name) ; move all team names in-line with player games
     (cond
       [(empty? lst) new-list]
       [(= (length (car lst)) 1) (iter (cdr lst) new-list (caar lst))]
       [else (iter (cdr lst) (append new-list `((,team-name ,@(car lst)))) team-name)]))
-  (iter (read-file filename) '() "NoName"))
+  (iter (file->int-lists filename) '() "NoName"))
 
 (define (strike? val)
   (equal? val "X"))
@@ -30,9 +30,9 @@
 ; Score the next half-frame (single roll)
 (define (calculate-next-roll score-list) ; score whatever is at the front of the list
   (define (bowling-value score) ; Raw score used for strike and spare calculation
-    (if (number? score)
-        score
-        (if (strike? score) 10 0)))
+    (cond [(number? score) score]
+          [(strike? score) 10]
+          [else 0]))
   (cond [(empty? score-list) 0] ; if the game list is empty, return 0
         [(and (> (length score-list) 1) (spare? (second score-list))) 0] ; if the next symbol is a spare, we will count that as 10, so the current number is 0
         [(number? (first score-list)) (first score-list)] ; if element is a number, this is the roll score
@@ -92,7 +92,7 @@
 
 ; Put all desired output into list
 (define (get-stats filename)
-  (define game-list (process-file filename))
+  (define game-list (parse-file filename))
   (if (empty? game-list)
       "Game file empty"
       (let* ([team-scores (score-teams game-list)])
