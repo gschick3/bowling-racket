@@ -46,12 +46,14 @@
 
 ; Score a single game
 (define (score-game game-list)
+  (define extra-frames (> (length (cdddr game-list)) 10))
   (define (iter game-scores total)
     (if (empty? game-scores)
         total
-        (if (or (and (= (length game-scores) 2) (spare? (first game-scores)))
-                (and (= (length game-scores) 3) (strike? (first game-scores))))
-            (+ total (calculate-next-roll game-scores)) ; if spare is second-to-last or strike is third-to-last, only calculate spare/strike score and ignore the extra frames
+        (if (and extra-frames ; if there are extra frames, then watch out for the spare and strikes towards the end
+                 (or (and (= (length game-scores) 2) (spare? (first game-scores)))
+                     (and (= (length game-scores) 3) (strike? (first game-scores)))))
+            (+ total (calculate-next-roll game-scores))
             (iter (rest game-scores) (+ total (calculate-next-roll game-scores)))))) ; otherwise, continue to next score (I believe this is tail call optimization)
   (iter (cdddr game-list) 0)) ; start without team name, fname, and lname
 
