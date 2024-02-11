@@ -59,8 +59,10 @@
 
 ; Calculate all game scores
 (define (score-players game-list)
-  (map (λ (game) `(,@(take game 3) ,(score-game game)))
-       game-list))
+  (sort (map (λ (game) `(,@(take game 3) ,(score-game game)))
+             game-list)
+        (λ (g1 g2) (string<? (string-append (first g1) (third g1) (second g1))
+                             (string-append (first g2) (third g2) (second g2))))))
 
 ; Get total score grouped by elements as specified by group-func
 (define (total-by lst group-func score-func) ; group func is a function that specifies which elements of each sublist of lst to group by
