@@ -79,19 +79,19 @@
             last))
 
 ; Get total scores for each team
-(define (score-teams game-list)
+(define (team-totals game-list)
   (total-by (score-players game-list)
             (λ (game) `(,(first game)))
             last))
 
-; Get top-scoring player(s) and number of points where scores is the output from score-all
-(define (find-top-score-player game-list)
-  (let* ; bring this out so it isn't recalculated every time the filter λ is called
-      ([scores (player-totals game-list)]
-       [top-player-score (foldl (λ (next-player-list top-score) (if (> top-score (last next-player-list)) top-score (last next-player-list)))
-                                (fourth (first scores)) ; find largest score among players
-                                scores)])
-    (filter (λ (player-list) (= (fourth player-list) top-player-score)) ; then, filter all players with that score
+; Get top-scorer of game-list based on score-func (function that scores all players, teams, etc.)
+(define (find-top-score game-list score-func)
+  (let*
+      ([scores (score-func game-list)]
+       [top-score (foldl (λ (score-list top-score) (if (> top-score (last score-list)) top-score (last score-list)))
+                         (last (first scores)) ; find largest score among players
+                         scores)])
+    (filter (λ (score-list) (= (last score-list) top-score))
             scores)))
 
 ; Put all desired output into list
@@ -99,14 +99,11 @@
   (define game-list (parse-file filename))
   (if (empty? game-list)
       "Game file empty"
-      (let* ([team-scores (score-teams game-list)])
-        `(("Game Scores" ,(score-players game-list))
-          ("Player Totals" ,(player-totals game-list))
-          ("Top players" ,(find-top-score-player game-list))
-          ("Team scores" ,team-scores)
-          ("Winner" ,(first (foldl (λ (team-info winning-team) (if (> (second team-info) (second winning-team)) team-info winning-team))
-                                   (first team-scores)
-                                   team-scores)))))))
+      `(("Game scores" ,(score-players game-list))
+        ("Player totals" ,(player-totals game-list))
+        ("Top player(s)" ,(find-top-score game-list player-totals))
+        ("Team scores" ,(team-totals game-list))
+        ("Winning team(s)" ,(find-top-score game-list team-totals)))))
 
 (get-stats "scores.txt")
 
